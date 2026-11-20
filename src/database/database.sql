@@ -49,7 +49,7 @@ FROM products p JOIN categories c ON c.id = p.category_id;
 
 CREATE TABLE restock_orders (
   id SERIAL PRIMARY KEY,
-  po_number VARCHAR(30) UNIQUE NOT NULL DEFAULT ('PO-' || TO_CHAR(NOW(), 'YYYYMM') || '-' || LPAD(NEXTVAL('po_seq')::TEXT, 4, '0')),
+  po_number VARCHAR(30) GENERATED ALWAYS AS ('PO-' || LPAD(id::TEXT, 4, '0')) STORED UNIQUE,
   supplier_id INTEGER NOT NULL REFERENCES users(id),
   manager_id INTEGER NOT NULL REFERENCES users(id),
   order_date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -73,7 +73,7 @@ CREATE TABLE restock_order_items (
 
 CREATE TABLE transactions (
   id SERIAL PRIMARY KEY,
-  trx_number VARCHAR(30) UNIQUE NOT NULL DEFAULT ('TRX-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(NEXTVAL('trx_seq')::TEXT, 4, '0')),
+  trx_number VARCHAR(30) GENERATED ALWAYS AS ('TRX-' || LPAD(id::TEXT, 4, '0')) STORED UNIQUE,
   type VARCHAR(3) NOT NULL CHECK (type IN ('IN','OUT')),
   trx_date DATE NOT NULL DEFAULT CURRENT_DATE,
   restock_order_id INTEGER REFERENCES restock_orders(id),
