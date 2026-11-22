@@ -3,7 +3,7 @@ import DashboardNav from "@/components/layout/DashboardNav";
 import { btn } from "@/components/ui/styles";
 
 const NAV = {
-  admin: [["", "Dashboard"], ["/products", "Products"], ["/categories", "Categories"], ["/transactions", "Transactions"], ["/suppliers", "Suppliers"]],
+  admin: [["", "Dashboard"], ["/products", "Products"], ["/categories", "Categories"], ["/transactions", "Transactions"], ["/suppliers", "Suppliers"], ["/users", "Users"]],
   manager: [["", "Dashboard"], ["/products", "Products"], ["/categories", "Categories"], ["/transactions", "Transactions"], ["/restock", "Restock"]],
   staff: [["", "Dashboard"], ["/products", "Products"], ["/transactions", "Transactions"]],
   supplier: [["", "Dashboard"], ["/restock", "Restock"]],
