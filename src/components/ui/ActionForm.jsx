@@ -5,20 +5,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { btn } from "@/components/ui/styles";
 
-export default function ActionForm({ action, label, variant = "primary", redirectTo, cancelHref, confirm, className = "", children }) {
+export default function ActionForm({ action, label, variant = "primary", redirectTo, cancelHref, confirm, success, className = "", children }) {
   const router = useRouter();
   const [errors, setErrors] = useState([]);
   const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (confirm && !window.confirm(confirm)) return;
-    const data = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    setDone(false);
     setPending(true);
     const result = await action(data);
     setPending(false);
     if (result?.errors) return setErrors(Object.values(result.errors));
     setErrors([]);
+    setDone(true);
+    form.reset();
     if (redirectTo) router.push(redirectTo);
     router.refresh();
   }
@@ -32,6 +37,11 @@ export default function ActionForm({ action, label, variant = "primary", redirec
             <li key={message}>{message}</li>
           ))}
         </ul>
+      )}
+      {done && success && (
+        <p role="status" className="mb-3 text-sm text-muted-foreground">
+          {success}
+        </p>
       )}
       <button disabled={pending} className={btn[variant]}>
         {pending ? "Please wait..." : label}
