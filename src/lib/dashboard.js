@@ -40,7 +40,7 @@ async function manager() {
        FROM ${PRODUCTS_WITH_STATUS}`
     ),
     many(`SELECT ${TRX_ROW} WHERE t.status = 'Pending' ORDER BY t.created_at, t.id LIMIT 10`),
-    many(`SELECT ${PO_ROW} WHERE r.status IN ('Pending', 'Confirmed', 'In Transit') ORDER BY r.created_at DESC, r.id DESC LIMIT 10`),
+    many(`SELECT ${PO_ROW} WHERE r.status IN ('Pending', 'Confirmed', 'In Transit', 'Inspecting') ORDER BY r.created_at DESC, r.id DESC LIMIT 10`),
   ]);
   return { ...stock, pending_transactions: pending, active_restock: restock };
 }
@@ -53,7 +53,7 @@ async function staff(user) {
 async function supplier(user) {
   const [toConfirm, history] = await Promise.all([
     many(`SELECT ${PO_ROW} WHERE r.supplier_id = $1 AND r.status = 'Pending' ORDER BY r.created_at, r.id`, [user.id]),
-    many(`SELECT ${PO_ROW} WHERE r.supplier_id = $1 AND r.status IN ('In Transit', 'Received') ORDER BY r.created_at DESC, r.id DESC LIMIT 10`, [user.id]),
+    many(`SELECT ${PO_ROW} WHERE r.supplier_id = $1 AND r.status IN ('In Transit', 'Inspecting', 'Received', 'Returned') ORDER BY r.created_at DESC, r.id DESC LIMIT 10`, [user.id]),
   ]);
   return { to_confirm: toConfirm, shipment_history: history };
 }
