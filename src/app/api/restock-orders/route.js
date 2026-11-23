@@ -4,7 +4,7 @@ import { createRestock, listRestock } from "@/lib/restock";
 import { respond, serverError } from "@/lib/api";
 
 export async function GET(request) {
-  const { user, error } = await authorize(["manager", "supplier"]);
+  const { user, error } = await authorize(["manager", "supplier", "staff"]);
   if (error) return error;
   try {
     const query = request.nextUrl.searchParams;
