@@ -39,14 +39,6 @@ CREATE TABLE products (
   CHECK (low_stock > min_stock)
 );
 
-CREATE VIEW products_view AS
-SELECT p.*, c.name AS category_name,
-  CASE WHEN p.stock = 0 THEN 'Out of Stock'
-       WHEN p.stock <= p.min_stock THEN 'Severe'
-       WHEN p.stock <= p.low_stock THEN 'Low'
-       ELSE 'Normal' END AS stock_status
-FROM products p JOIN categories c ON c.id = p.category_id;
-
 CREATE TABLE restock_orders (
   id SERIAL PRIMARY KEY,
   po_number VARCHAR(30) GENERATED ALWAYS AS ('PO-' || LPAD(id::TEXT, 4, '0')) STORED UNIQUE,
@@ -55,11 +47,13 @@ CREATE TABLE restock_orders (
   order_date DATE NOT NULL DEFAULT CURRENT_DATE,
   expected_date DATE NOT NULL,
   notes TEXT,
-  status VARCHAR(20) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Confirmed','Rejected','In Transit','Received')),
+  status VARCHAR(20) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Confirmed','Rejected','In Transit','Inspecting','Received','Returned')),
   status_note TEXT,
+  arrival_photo VARCHAR(255),
+  inspection_report TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   CHECK (expected_date >= order_date),
-  CHECK (status <> 'Rejected' OR LENGTH(TRIM(COALESCE(status_note, ''))) > 0)
+  CHECK (status NOT IN ('Rejected','Returned') OR LENGTH(TRIM(COALESCE(status_note, ''))) > 0)
 );
 
 CREATE TABLE restock_order_items (
