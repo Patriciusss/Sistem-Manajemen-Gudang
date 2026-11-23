@@ -76,7 +76,7 @@ export async function createTransaction(user, body) {
   let items;
   if (data.restock_order_id) {
     const po = await pool.query("SELECT supplier_id, status FROM restock_orders WHERE id = $1", [data.restock_order_id]);
-    if (!po.rows[0] || po.rows[0].status !== "Received") return { errors: { restock_order_id: "PO must exist and be Received" } };
+    if (!po.rows[0] || po.rows[0].status !== "Inspecting") return { errors: { restock_order_id: "PO must exist and be Inspecting" } };
     const poItems = await pool.query(
       "SELECT product_id, product_name, product_sku, quantity FROM restock_order_items WHERE restock_order_id = $1 ORDER BY id",
       [data.restock_order_id]
@@ -160,54 +160,73 @@ export async function deleteTransaction(user, id) {
   return { errors: { status: "Only Pending transactions can be deleted" }, status: 409 };
 }
 
-async function reviewTransaction(user, id, status, reason) {
-  const text = typeof reason === "string" ? reason.trim() : "";
-  if (status === "Rejected" && !text) return { errors: { reason: "Reason is required when rejecting" } };
-
+async function withTransaction(work) {
   const client = await pool.connect();
-  let result;
   try {
     await client.query("BEGIN");
-    const found = await client.query("SELECT type, status FROM transactions WHERE id = $1 FOR UPDATE", [id]);
-    const t = found.rows[0];
-    if (!t) result = { status: 404 };
-    else if (t.status !== "Pending") result = { errors: { status: "Transaction is not Pending" }, status: 409 };
-    else {
-      if (status === "Approved") {
-        const items = (await client.query("SELECT product_id, product_name, quantity FROM transaction_items WHERE transaction_id = $1", [id])).rows;
-        const ids = items.map((i) => i.product_id);
-        const stock = ids.includes(null)
-          ? null
-          : await client.query("SELECT id, stock FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE", [ids]);
-        if (!stock || stock.rowCount !== items.length) result = { errors: { items: "A product in this transaction no longer exists" }, status: 409 };
-        else {
-          const current = new Map(stock.rows.map((p) => [p.id, p.stock]));
-          const short = t.type === "OUT" && items.find((i) => i.quantity > current.get(i.product_id));
-          if (short) result = { errors: { items: `Insufficient stock for ${short.product_name} (${current.get(short.product_id)} left)` }, status: 409 };
-          else {
-            const sign = t.type === "IN" ? 1 : -1;
-            for (const i of items) await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [sign * i.quantity, i.product_id]);
-          }
-        }
-      }
-      if (!result) {
-        const updated = await client.query(
-          `UPDATE transactions SET status = $1, reject_reason = $2, approved_by = $3 WHERE id = $4
-           RETURNING id, trx_number, status, reject_reason`,
-          [status, status === "Rejected" ? text : null, status === "Approved" ? user.id : null, id]
-        );
-        result = { data: updated.rows[0] };
-      }
-    }
+    const result = await work(client);
     await client.query(result.data ? "COMMIT" : "ROLLBACK");
+    return result;
   } catch (e) {
     await client.query("ROLLBACK");
     throw e;
   } finally {
     client.release();
   }
-  return result;
 }
+
+async function applyStock(client, id, sign) {
+  const items = (await client.query("SELECT product_id, product_name, quantity FROM transaction_items WHERE transaction_id = $1", [id])).rows;
+  const ids = items.map((i) => i.product_id);
+  const locked = ids.includes(null) ? null : await client.query("SELECT id, stock FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE", [ids]);
+  if (!locked || locked.rowCount !== items.length) return { errors: { items: "A product in this transaction no longer exists" }, status: 409 };
+  const current = new Map(locked.rows.map((p) => [p.id, p.stock]));
+  const short = sign < 0 && items.find((i) => i.quantity > current.get(i.product_id));
+  if (short) return { errors: { items: `Insufficient stock for ${short.product_name} (${current.get(short.product_id)} left)` }, status: 409 };
+  for (const i of items) await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [sign * i.quantity, i.product_id]);
+  return null;
+}
+
+const reviewTransaction = (user, id, status, reason) => {
+  const text = typeof reason === "string" ? reason.trim() : "";
+  if (status === "Rejected" && !text) return { errors: { reason: "Reason is required when rejecting" } };
+
+  return withTransaction(async (client) => {
+    const found = await client.query("SELECT type, status, restock_order_id FROM transactions WHERE id = $1 FOR UPDATE", [id]);
+    const t = found.rows[0];
+    if (!t) return { status: 404 };
+    if (t.status !== "Pending") return { errors: { status: "Transaction is not Pending" }, status: 409 };
+    if (status === "Approved" && t.type === "IN") {
+      const failed = await applyStock(client, id, 1);
+      if (failed) return failed;
+      if (t.restock_order_id) {
+        const po = await client.query("UPDATE restock_orders SET status = 'Received' WHERE id = $1 AND status = 'Inspecting'", [t.restock_order_id]);
+        if (!po.rowCount) return { errors: { restock_order_id: "The PO is no longer being inspected" }, status: 409 };
+      }
+    }
+    if (status === "Rejected" && t.restock_order_id) {
+      await client.query("UPDATE restock_orders SET status = 'Returned', status_note = $1 WHERE id = $2 AND status = 'Inspecting'", [text, t.restock_order_id]);
+    }
+    const updated = await client.query(
+      `UPDATE transactions SET status = $1, reject_reason = $2, approved_by = $3 WHERE id = $4
+       RETURNING id, trx_number, status, reject_reason`,
+      [status, status === "Rejected" ? text : null, status === "Approved" ? user.id : null, id]
+    );
+    return { data: updated.rows[0] };
+  });
+};
+
+const shipTransaction = (id) =>
+  withTransaction(async (client) => {
+    const found = await client.query("SELECT type, status FROM transactions WHERE id = $1 FOR UPDATE", [id]);
+    const t = found.rows[0];
+    if (!t) return { status: 404 };
+    if (t.type !== "OUT" || t.status !== "Approved") return { errors: { status: "Only an Approved outgoing transaction can be shipped" }, status: 409 };
+    const failed = await applyStock(client, id, -1);
+    if (failed) return failed;
+    const updated = await client.query("UPDATE transactions SET status = 'Shipped' WHERE id = $1 RETURNING id, trx_number, status", [id]);
+    return { data: updated.rows[0] };
+  });
 
 export async function changeTransactionStatus(user, id, status, reason) {
   if (status === "Approved" || status === "Rejected") {
@@ -215,12 +234,5 @@ export async function changeTransactionStatus(user, id, status, reason) {
   }
   if (status !== "Shipped") return { errors: { status: "Invalid status" } };
   if (user.role !== "staff") return { errors: { status: "Only staff can mark Shipped" }, status: 403 };
-
-  const { rows } = await pool.query(
-    "UPDATE transactions SET status = 'Shipped' WHERE id = $1 AND type = 'OUT' AND status = 'Approved' RETURNING id, trx_number, status",
-    [id]
-  );
-  if (rows[0]) return { data: rows[0] };
-  const found = await pool.query("SELECT 1 FROM transactions WHERE id = $1", [id]);
-  return found.rowCount ? { errors: { status: "Only an Approved outgoing transaction can be shipped" }, status: 409 } : { status: 404 };
+  return shipTransaction(id);
 }
