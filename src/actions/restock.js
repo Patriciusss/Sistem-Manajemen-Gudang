@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
-import { changeRestockStatus, createRestock } from "@/lib/restock";
+import { changeRestockStatus, createRestock, submitArrivalPhoto, submitInspectionReport } from "@/lib/restock";
 import { parseId } from "@/lib/api";
 
 const finish = (result) => {
   if (result.status === 404) return { errors: { id: "Order not found" } };
   if (result.errors) return { errors: result.errors };
-  revalidatePath("/manager/restock");
-  revalidatePath("/supplier/restock");
+  revalidatePath("/", "layout");
   return { ok: true };
 };
 
@@ -34,4 +33,18 @@ export async function changeRestockStatusAction(formData) {
   const id = parseId(formData.get("id"));
   if (!id) return { errors: { id: "Invalid order" } };
   return finish(await changeRestockStatus(user, id, formData.get("status"), formData.get("note")));
+}
+
+export async function submitArrivalPhotoAction(formData) {
+  const user = await requireUser(["supplier"]);
+  const id = parseId(formData.get("id"));
+  if (!id) return { errors: { id: "Invalid order" } };
+  return finish(await submitArrivalPhoto(user, id, formData.get("arrival_photo")));
+}
+
+export async function submitInspectionReportAction(formData) {
+  const user = await requireUser(["staff"]);
+  const id = parseId(formData.get("id"));
+  if (!id) return { errors: { id: "Invalid order" } };
+  return finish(await submitInspectionReport(user, id, formData.get("inspection_report")));
 }
