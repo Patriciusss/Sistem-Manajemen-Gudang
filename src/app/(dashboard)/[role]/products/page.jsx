@@ -1,119 +1,132 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { getProduct } from "@/lib/products";
-import { parseId } from "@/lib/api";
+import { listProducts } from "@/lib/products";
+import { listCategories } from "@/lib/categories";
 import StockBadge from "@/components/ui/StockBadge";
-import ActionForm from "@/components/ui/ActionForm";
+import Field from "@/components/ui/Field";
+import Select from "@/components/ui/Select";
 import { btn } from "@/components/ui/styles";
-import { deleteProductAction } from "@/actions/products";
 
-const rupiah = (n) => `Rp ${n.toLocaleString("id-ID")}`;
+const LIMIT = 10;
+const STATUSES = ["Out of Stock", "Severe", "Low", "Normal"];
+const SORTS = [
+  ["name", "Name A-Z"],
+  ["stock_asc", "Stock, low to high"],
+  ["stock_desc", "Stock, high to low"],
+  ["newest", "Newest"],
+  ["oldest", "Oldest"],
+];
 
-export default async function ProductDetailPage({ params }) {
+const pick = (value) => (Array.isArray(value) ? value[0] : value);
+
+export default async function ProductsPage({ searchParams }) {
   const user = await requireUser(["admin", "manager", "staff"]);
-  const id = parseId((await params).id);
-  const result = id ? await getProduct(id) : { status: 404 };
-  if (result.status === 404) notFound();
-  const p = result.data;
+  const query = await searchParams;
+  const filters = { search: pick(query.search), category_id: pick(query.category_id), status: pick(query.status), sort: pick(query.sort) };
+  const page = Math.max(1, parseInt(pick(query.page)) || 1);
+  const [{ data: products, total }, { data: categories }] = await Promise.all([
+    listProducts({ ...filters, page, limit: LIMIT }),
+    listCategories(),
+  ]);
+  const pages = Math.max(1, Math.ceil(total / LIMIT));
+  const pageHref = (p) => `?${new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), page: p })}`;
   const base = `/${user.role}/products`;
-  const info = [
-    ["SKU", p.sku],
-    ["Category", p.category_name],
-    ["Stock", `${p.stock} ${p.unit}`],
-    ["Shelf", p.shelf_location],
-    ["Buy price", rupiah(p.buy_price)],
-    ["Sell price", rupiah(p.sell_price)],
-    ["Severe at or below", p.min_stock],
-    ["Low at or below", p.low_stock],
-    ["Added", p.created_at.toISOString().slice(0, 10)],
-  ];
 
   return (
     <div className="space-y-6">
-      <Link href={base} className="text-sm text-muted-foreground underline underline-offset-2">
-        Back to products
-      </Link>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
-          <StockBadge status={p.stock_status} />
-        </div>
-        <div className="flex flex-wrap items-start gap-3">
-          {user.role === "manager" && p.stock_status !== "Normal" && (
-            <Link href={`/manager/restock/new?product_id=${p.id}`} className={btn.primary}>
-              Create Restock Order
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
+        {user.role !== "staff" && (
+          <Link href={`${base}/new`} className={btn.primary}>
+            New product
+          </Link>
+        )}
+      </div>
+
+      <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_10rem_10rem_11rem_auto] lg:items-end">
+        <Field label="Search name or SKU" name="search" defaultValue={filters.search ?? ""} />
+        <Select label="Category" name="category_id" defaultValue={filters.category_id ?? ""}>
+          <option value="">All</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+        <Select label="Stock status" name="status" defaultValue={filters.status ?? ""}>
+          <option value="">All</option>
+          {STATUSES.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </Select>
+        <Select label="Sort by" name="sort" defaultValue={filters.sort ?? "name"}>
+          {SORTS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        <button className={btn.primary}>Apply</button>
+      </form>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full min-w-160 text-left text-sm">
+          <thead className="border-b border-border bg-muted text-muted-foreground">
+            <tr>
+              {["SKU", "Name", "Category", "Stock", "Shelf", "Status"].map((h) => (
+                <th key={h} scope="col" className="px-4 py-3 font-medium">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {products.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  No products match your filters.
+                </td>
+              </tr>
+            )}
+            {products.map((p) => (
+              <tr key={p.id} className="border-b border-border last:border-0">
+                <td className="px-4 py-3 font-mono text-xs">{p.sku}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Link href={`${base}/${p.id}`} className="underline underline-offset-2">
+                    {p.name}
+                  </Link>
+                </td>
+                <td className="px-4 py-3">{p.category_name}</td>
+                <td className="px-4 py-3">
+                  {p.stock} {p.unit}
+                </td>
+                <td className="px-4 py-3">{p.shelf_location}</td>
+                <td className="px-4 py-3">
+                  <StockBadge status={p.stock_status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>
+          {total} products, page {page} of {pages}
+        </span>
+        <div className="flex gap-2">
+          {page > 1 && (
+            <Link href={pageHref(page - 1)} className={btn.secondary}>
+              Previous
             </Link>
           )}
-          {user.role !== "staff" && (
-            <>
-              <Link href={`${base}/${p.id}/edit`} className={btn.secondary}>
-                Edit
-              </Link>
-              <ActionForm
-                action={deleteProductAction}
-                label="Delete"
-                variant="danger"
-                redirectTo={base}
-                confirm={`Delete ${p.name}?${p.stock > 0 ? ` It still has ${p.stock} ${p.unit} in stock.` : ""}`}
-              >
-                <input type="hidden" name="id" value={p.id} />
-                <input type="hidden" name="force" value="true" />
-              </ActionForm>
-            </>
+          {page < pages && (
+            <Link href={pageHref(page + 1)} className={btn.secondary}>
+              Next
+            </Link>
           )}
         </div>
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1fr_16rem]">
-        <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
-          <p className="mb-4 text-muted-foreground">{p.description}</p>
-          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-            {info.map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-        {p.image && <img src={p.image} alt={p.name} className="aspect-square w-full rounded-xl border border-border object-cover" />}
-      </div>
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Last 5 transactions</h2>
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-120 text-left text-sm">
-            <thead className="border-b border-border bg-muted text-muted-foreground">
-              <tr>
-                {["Number", "Type", "Date", "Quantity", "Status"].map((h) => (
-                  <th key={h} scope="col" className="px-4 py-3 font-medium">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {p.history.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
-                    No transactions yet.
-                  </td>
-                </tr>
-              )}
-              {p.history.map((t) => (
-                <tr key={t.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 font-mono text-xs">{t.trx_number}</td>
-                  <td className="px-4 py-3">{t.type === "IN" ? "Incoming" : "Outgoing"}</td>
-                  <td className="px-4 py-3">{t.trx_date}</td>
-                  <td className="px-4 py-3">{t.quantity}</td>
-                  <td className="px-4 py-3">{t.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }
