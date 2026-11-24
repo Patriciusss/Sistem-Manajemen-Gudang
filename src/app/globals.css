@@ -158,6 +158,57 @@ body {
   }
 }
 
+@media (max-width: 639px) {
+  .rtable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .rtable,
+  .rtable tbody,
+  .rtable tr,
+  .rtable td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .rtable tr {
+    width: auto;
+    margin: 0.75rem;
+    padding: 0.35rem 0;
+    border: 1px solid rgb(255 255 255 / 0.9);
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.7);
+  }
+  .rtable td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4rem 0.9rem;
+    text-align: right;
+  }
+  .rtable td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-soft);
+  }
+  .rtable td[colspan] {
+    display: block;
+    text-align: left;
+  }
+  .rtable td[colspan]::before {
+    content: none;
+  }
+}
+
 @keyframes drift {
   to {
     transform: translate3d(6vw, 5vh, 0) scale(1.12);

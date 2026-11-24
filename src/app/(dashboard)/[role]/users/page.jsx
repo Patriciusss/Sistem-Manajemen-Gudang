@@ -27,7 +27,7 @@ export default async function UsersPage() {
         ))}
       </div>
       <div className="glass-strong overflow-x-auto">
-        <table className="w-full min-w-176 text-left text-sm">
+        <table className="rtable w-full text-left text-sm sm:min-w-176">
           <thead>
             <tr>
               {["Name", "Email", "Role", "Status", "New password"].map((h) => (
@@ -40,13 +40,13 @@ export default async function UsersPage() {
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className={`${row} align-top`}>
-                <td className={`${td} font-semibold`}>{u.name}</td>
-                <td className={td}>{u.email}</td>
-                <td className={`${td} capitalize`}>{u.role}</td>
-                <td className={td}>
+                <td className={`${td} font-semibold`} data-label="Name">{u.name}</td>
+                <td className={td} data-label="Email">{u.email}</td>
+                <td className={`${td} capitalize`} data-label="Role">{u.role}</td>
+                <td className={td} data-label="Status">
                   <StatusBadge status={u.status} />
                 </td>
-                <td className={td}>
+                <td className={td} data-label="New password">
                   <ActionForm action={resetPasswordAction} label="Reset" success={`Password updated for ${u.name}`} className="flex flex-wrap items-start gap-2">
                     <input type="hidden" name="id" value={u.id} />
                     <input name="password" type="password" minLength={6} required autoComplete="new-password" placeholder="Min 6 characters" aria-label={`New password for ${u.name}`} className={`${inputClass} w-48`} />

@@ -31,7 +31,7 @@ export default async function SuppliersPage({ searchParams }) {
         ))}
       </div>
       <div className="glass-strong overflow-x-auto">
-        <table className="w-full min-w-160 text-left text-sm">
+        <table className="rtable w-full text-left text-sm sm:min-w-160">
           <thead>
             <tr>
               {["Name", "Email", "Registered", "Status", "Actions"].map((h) => (
@@ -44,13 +44,13 @@ export default async function SuppliersPage({ searchParams }) {
           <tbody>
             {suppliers.map((s) => (
               <tr key={s.id} className={row}>
-                <td className={`${td} font-semibold`}>{s.name}</td>
-                <td className={td}>{s.email}</td>
-                <td className={td}>{s.created_at.toISOString().slice(0, 10)}</td>
-                <td className={td}>
+                <td className={`${td} font-semibold`} data-label="Name">{s.name}</td>
+                <td className={td} data-label="Email">{s.email}</td>
+                <td className={td} data-label="Registered">{s.created_at.toISOString().slice(0, 10)}</td>
+                <td className={td} data-label="Status">
                   <StatusBadge status={s.status} />
                 </td>
-                <td className={td}>
+                <td className={td} data-label="Actions">
                   {s.status === "Pending" && (
                     <div className="flex flex-wrap gap-2">
                       {["Approved", "Rejected"].map((next) => (

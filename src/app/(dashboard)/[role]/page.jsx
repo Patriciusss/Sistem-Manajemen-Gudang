@@ -1,36 +1,40 @@
 import { requireUser } from "@/lib/session";
-import { listUsers } from "@/lib/users";
+import { listSuppliers } from "@/lib/suppliers";
+import { pick, withParams } from "@/lib/query";
 import ActionForm from "@/components/ui/ActionForm";
 import PageHeader from "@/components/ui/PageHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Stat from "@/components/ui/Stat";
-import { inputClass, th, td, row } from "@/components/ui/styles";
-import { resetPasswordAction } from "@/actions/users";
+import EmptyState from "@/components/ui/EmptyState";
+import { th, td, row } from "@/components/ui/styles";
+import { reviewSupplierAction } from "@/actions/suppliers";
 
-const ROLES = [
-  ["admin", "Admins", "shield", "cyan"],
-  ["manager", "Managers", "users", "teal"],
-  ["staff", "Staff", "box", "sky"],
-  ["supplier", "Suppliers", "truck", "green"],
+const TABS = [
+  ["Pending", "clock", "yellow"],
+  ["Approved", "check", "green"],
+  ["Rejected", "x", "red"],
 ];
 
-export default async function UsersPage() {
+export default async function SuppliersPage({ searchParams }) {
   await requireUser(["admin"]);
-  const { data: users } = await listUsers();
+  const requested = pick((await searchParams).status);
+  const status = TABS.some(([s]) => s === requested) ? requested : "Pending";
+  const lists = await Promise.all(TABS.map(([s]) => listSuppliers(s)));
+  const suppliers = lists[TABS.findIndex(([s]) => s === status)].data;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Users" subtitle="Set a new password for a user who forgot theirs. Their current sessions are signed out." />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {ROLES.map(([role, label, icon, tone], i) => (
-          <Stat key={role} label={label} value={users.filter((u) => u.role === role).length} icon={icon} tone={tone} index={i} />
+      <PageHeader title="Supplier verification" subtitle="New suppliers can sign in only after you approve them." />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {TABS.map(([s, icon, tone], i) => (
+          <Stat key={s} label={s} value={lists[i].data.length} icon={icon} tone={tone} href={withParams({ status: s })} active={s === status} index={i} />
         ))}
       </div>
       <div className="glass-strong overflow-x-auto">
-        <table className="w-full min-w-176 text-left text-sm">
+        <table className="rtable w-full text-left text-sm sm:min-w-160">
           <thead>
             <tr>
-              {["Name", "Email", "Role", "Status", "New password"].map((h) => (
+              {["Name", "Email", "Registered", "Status", "Actions"].map((h) => (
                 <th key={h} scope="col" className={th}>
                   {h}
                 </th>
@@ -38,24 +42,31 @@ export default async function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className={`${row} align-top`}>
-                <td className={`${td} font-semibold`}>{u.name}</td>
-                <td className={td}>{u.email}</td>
-                <td className={`${td} capitalize`}>{u.role}</td>
-                <td className={td}>
-                  <StatusBadge status={u.status} />
+            {suppliers.map((s) => (
+              <tr key={s.id} className={row}>
+                <td className={`${td} font-semibold`} data-label="Name">{s.name}</td>
+                <td className={td} data-label="Email">{s.email}</td>
+                <td className={td} data-label="Registered">{s.created_at.toISOString().slice(0, 10)}</td>
+                <td className={td} data-label="Status">
+                  <StatusBadge status={s.status} />
                 </td>
-                <td className={td}>
-                  <ActionForm action={resetPasswordAction} label="Reset" success={`Password updated for ${u.name}`} className="flex flex-wrap items-start gap-2">
-                    <input type="hidden" name="id" value={u.id} />
-                    <input name="password" type="password" minLength={6} required autoComplete="new-password" placeholder="Min 6 characters" aria-label={`New password for ${u.name}`} className={`${inputClass} w-48`} />
-                  </ActionForm>
+                <td className={td} data-label="Actions">
+                  {s.status === "Pending" && (
+                    <div className="flex flex-wrap gap-2">
+                      {["Approved", "Rejected"].map((next) => (
+                        <ActionForm key={next} action={reviewSupplierAction} label={next === "Approved" ? "Approve" : "Reject"} variant={next === "Approved" ? "primary" : "danger"} success={`${s.name} ${next.toLowerCase()}`}>
+                          <input type="hidden" name="id" value={s.id} />
+                          <input type="hidden" name="status" value={next} />
+                        </ActionForm>
+                      ))}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {suppliers.length === 0 && <EmptyState title={`No ${status.toLowerCase()} suppliers`} text="Nothing to review here right now." />}
       </div>
     </div>
   );
