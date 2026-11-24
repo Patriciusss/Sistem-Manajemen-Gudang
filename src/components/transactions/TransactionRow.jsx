@@ -23,7 +23,7 @@ export default function TransactionRow({ t, incoming, base }) {
   return (
     <>
       <tr className={`${row} cursor-pointer`} onClick={toggle}>
-        <td className={`${td} font-mono text-xs`}>
+        <td className={`${td} font-mono text-xs`} data-label="Number">
           <div className="flex items-center gap-2">
             <button type="button" aria-expanded={open} aria-controls={`trx-${t.id}`} aria-label={`Show items of ${t.trx_number}`} onClick={(e) => { e.stopPropagation(); toggle(); }} className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl hover:bg-white/70">
               <Icon name="chevron" className={`h-5 w-5 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
@@ -33,11 +33,11 @@ export default function TransactionRow({ t, incoming, base }) {
             </Link>
           </div>
         </td>
-        <td className={td}>{t.trx_date}</td>
-        <td className={td}>{incoming ? t.supplier_name : t.customer_name}</td>
-        <td className={td}>{incoming ? (t.po_number ?? "-") : `${t.item_count} products`}</td>
-        <td className={`${td} tabular-nums`}>{t.total_quantity}</td>
-        <td className={td}>
+        <td className={td} data-label="Date">{t.trx_date}</td>
+        <td className={td} data-label={incoming ? "Supplier" : "Customer"}>{incoming ? t.supplier_name : t.customer_name}</td>
+        <td className={td} data-label={incoming ? "PO" : "Items"}>{incoming ? (t.po_number ?? "-") : `${t.item_count} products`}</td>
+        <td className={`${td} tabular-nums`} data-label="Quantity">{t.total_quantity}</td>
+        <td className={td} data-label="Status">
           <StatusBadge status={t.status} />
         </td>
       </tr>
