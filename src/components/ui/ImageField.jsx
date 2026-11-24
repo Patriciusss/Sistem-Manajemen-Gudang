@@ -33,15 +33,15 @@ export default function ImageField({ label = "Image", name = "image", initial = 
         type="file"
         accept="image/jpeg,image/png,image/webp"
         onChange={handleChange}
-        className="block w-full text-sm file:mr-3 file:h-11 file:cursor-pointer file:rounded-lg file:border file:border-input file:bg-card file:px-4 file:font-medium"
+        className="block w-full text-sm file:mr-3 file:h-11 file:cursor-pointer file:rounded-xl file:border file:border-ink-soft/50 file:bg-white/70 file:px-4 file:font-medium file:text-ink"
       />
-      {uploading && <p className="mt-1.5 text-sm text-muted-foreground">Uploading...</p>}
+      {uploading && <p className="mt-1.5 text-sm text-ink-soft">Uploading...</p>}
       {error && (
-        <p role="alert" className="mt-1.5 text-sm text-destructive">
+        <p role="alert" className="mt-1.5 text-sm font-medium text-red-700">
           {error}
         </p>
       )}
-      {path && <img src={path} alt="" className="mt-3 h-24 w-24 rounded-lg border border-border object-cover" />}
+      {path && <img src={path} alt="" className="mt-3 h-24 w-24 rounded-xl border border-white/80 object-cover" />}
     </div>
   );
 }
