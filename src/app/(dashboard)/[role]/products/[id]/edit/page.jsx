@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import PageHeader from "@/components/ui/PageHeader";
 import { requireUser } from "@/lib/session";
 import { getProduct } from "@/lib/products";
 import { listCategories } from "@/lib/categories";
@@ -14,7 +15,7 @@ export default async function EditProductPage({ params }) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit {result.data.name}</h1>
+      <PageHeader title={`Edit ${result.data.name}`} />
       <ProductForm product={result.data} categories={categories} backHref={`/${user.role}/products/${id}`} />
     </div>
   );

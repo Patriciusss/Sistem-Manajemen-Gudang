@@ -1,5 +1,5 @@
 import ActionForm from "@/components/ui/ActionForm";
-import Field from "@/components/ui/Field";
+import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Textarea from "@/components/ui/Textarea";
 import ImageField from "@/components/ui/ImageField";
@@ -12,20 +12,21 @@ export default function ProductForm({ product, categories, backHref }) {
     <ActionForm
       action={product ? updateProductAction : createProductAction}
       label={product ? "Save changes" : "Create product"}
+      success={product ? "Product updated" : "Product created"}
       redirectTo={backHref}
       cancelHref={backHref}
-      className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"
+      className="glass-strong space-y-4 p-4 sm:p-6"
     >
       {product && <input type="hidden" name="id" value={product.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name" name="name" defaultValue={value("name")} maxLength={150} required />
+        <Input label="Name" name="name" defaultValue={value("name")} maxLength={150} required />
         {product ? (
           <div>
             <p className="mb-1.5 text-sm font-medium">SKU</p>
-            <p className="flex h-11 items-center rounded-lg bg-muted px-3 text-sm">{product.sku}</p>
+            <p className="flex h-11 items-center rounded-xl bg-white/60 px-3 text-sm">{product.sku}</p>
           </div>
         ) : (
-          <Field label="SKU" name="sku" maxLength={50} required />
+          <Input label="SKU" name="sku" maxLength={50} required />
         )}
         <Select label="Category" name="category_id" defaultValue={value("category_id")} required>
           <option value="" disabled>
@@ -37,13 +38,13 @@ export default function ProductForm({ product, categories, backHref }) {
             </option>
           ))}
         </Select>
-        <Field label="Unit" name="unit" defaultValue={value("unit", "pcs")} maxLength={20} required />
-        <Field label="Buy price (Rp)" name="buy_price" type="number" min="0" step="1" defaultValue={value("buy_price")} required />
-        <Field label="Sell price (Rp)" name="sell_price" type="number" min="0" step="1" defaultValue={value("sell_price")} required />
-        <Field label="Stock" name="stock" type="number" min="0" step="1" defaultValue={value("stock", 0)} required />
-        <Field label="Shelf location" name="shelf_location" defaultValue={value("shelf_location")} maxLength={50} required />
-        <Field label="Severe at or below" name="min_stock" type="number" min="0" step="1" defaultValue={value("min_stock")} required />
-        <Field label="Low at or below" name="low_stock" type="number" min="0" step="1" defaultValue={value("low_stock")} required />
+        <Input label="Unit" name="unit" defaultValue={value("unit", "pcs")} maxLength={20} required />
+        <Input label="Buy price (Rp)" name="buy_price" type="number" min="0" step="1" defaultValue={value("buy_price")} required />
+        <Input label="Sell price (Rp)" name="sell_price" type="number" min="0" step="1" defaultValue={value("sell_price")} required />
+        <Input label="Stock" name="stock" type="number" min="0" step="1" defaultValue={value("stock", 0)} required />
+        <Input label="Shelf location" name="shelf_location" defaultValue={value("shelf_location")} maxLength={50} required />
+        <Input label="Severe at or below" name="min_stock" type="number" min="0" step="1" defaultValue={value("min_stock")} required />
+        <Input label="Low at or below" name="low_stock" type="number" min="0" step="1" defaultValue={value("low_stock")} required />
       </div>
       <Textarea label="Description" name="description" defaultValue={value("description")} maxLength={5000} required />
       <ImageField initial={value("image")} />

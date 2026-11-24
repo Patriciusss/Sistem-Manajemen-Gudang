@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import PageHeader from "@/components/ui/PageHeader";
 import { requireUser } from "@/lib/session";
 import { getCategory } from "@/lib/categories";
 import { parseId } from "@/lib/api";
@@ -12,7 +13,7 @@ export default async function EditCategoryPage({ params }) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit {result.data.name}</h1>
+      <PageHeader title={`Edit ${result.data.name}`} />
       <CategoryForm category={result.data} backHref={`/${user.role}/categories`} />
     </div>
   );

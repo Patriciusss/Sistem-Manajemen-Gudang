@@ -1,3 +1,4 @@
+import PageHeader from "@/components/ui/PageHeader";
 import { requireUser } from "@/lib/session";
 import CategoryForm from "@/components/categories/CategoryForm";
 
@@ -6,7 +7,7 @@ export default async function NewCategoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">New category</h1>
+      <PageHeader title="New category" />
       <CategoryForm backHref={`/${user.role}/categories`} />
     </div>
   );

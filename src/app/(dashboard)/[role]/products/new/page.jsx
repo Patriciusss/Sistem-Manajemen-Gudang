@@ -1,3 +1,4 @@
+import PageHeader from "@/components/ui/PageHeader";
 import { requireUser } from "@/lib/session";
 import { listCategories } from "@/lib/categories";
 import ProductForm from "@/components/products/ProductForm";
@@ -8,7 +9,7 @@ export default async function NewProductPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">New product</h1>
+      <PageHeader title="New product" />
       <ProductForm categories={categories} backHref={`/${user.role}/products`} />
     </div>
   );
