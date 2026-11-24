@@ -4,44 +4,43 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { btn } from "@/components/ui/styles";
+import Modal from "@/components/ui/Modal";
 
-export default function ActionForm({ action, label, variant = "primary", redirectTo, cancelHref, confirm, success, className = "", children }) {
+export default function ActionForm({ action, label, variant = "primary", redirectTo, cancelHref, confirm, success = "Saved", onDone, className = "", children }) {
   const router = useRouter();
   const [errors, setErrors] = useState([]);
   const [pending, setPending] = useState(false);
-  const [done, setDone] = useState(false);
+  const [asking, setAsking] = useState(null);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (confirm && !window.confirm(confirm)) return;
-    const form = e.currentTarget;
-    const data = new FormData(form);
-    setDone(false);
+  async function run(form) {
+    setAsking(null);
     setPending(true);
-    const result = await action(data);
+    const result = await action(new FormData(form));
     setPending(false);
     if (result?.errors) return setErrors(Object.values(result.errors));
     setErrors([]);
-    setDone(true);
     form.reset();
+    window.dispatchEvent(new CustomEvent("toast", { detail: success }));
+    onDone?.();
     if (redirectTo) router.push(redirectTo);
     router.refresh();
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (confirm) setAsking(e.currentTarget);
+    else run(e.currentTarget);
   }
 
   return (
     <form onSubmit={handleSubmit} className={className}>
       {children}
       {errors.length > 0 && (
-        <ul role="alert" className="mb-3 space-y-1 rounded-lg border border-destructive bg-card px-3 py-2 text-sm text-destructive">
+        <ul role="alert" className="mb-3 space-y-1 rounded-xl border border-red-700 bg-white/80 px-3 py-2 text-sm font-medium text-red-700">
           {errors.map((message) => (
             <li key={message}>{message}</li>
           ))}
         </ul>
-      )}
-      {done && success && (
-        <p role="status" className="mb-3 text-sm text-muted-foreground">
-          {success}
-        </p>
       )}
       <button disabled={pending} className={btn[variant]}>
         {pending ? "Please wait..." : label}
@@ -50,6 +49,19 @@ export default function ActionForm({ action, label, variant = "primary", redirec
         <Link href={cancelHref} className={`${btn.secondary} ml-3`}>
           Cancel
         </Link>
+      )}
+      {asking && (
+        <Modal title="Please confirm" onClose={() => setAsking(null)}>
+          <p className="mb-4 text-ink-soft">{confirm}</p>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setAsking(null)} className={btn.secondary}>
+              Cancel
+            </button>
+            <button type="button" autoFocus onClick={() => run(asking)} className={btn[variant]}>
+              {label}
+            </button>
+          </div>
+        </Modal>
       )}
     </form>
   );
