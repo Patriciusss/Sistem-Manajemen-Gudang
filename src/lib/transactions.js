@@ -7,6 +7,13 @@ const FROM = `FROM transactions t
 const COLUMNS = `t.id, t.trx_number, t.type, TO_CHAR(t.trx_date, 'YYYY-MM-DD') AS trx_date, t.status,
   t.customer_name, s.name AS supplier_name, r.po_number`;
 
+const SORTS = {
+  newest: "t.trx_date DESC, t.id DESC",
+  oldest: "t.trx_date ASC, t.id ASC",
+  quantity: "total_quantity DESC, t.id DESC",
+  status: "t.status ASC, t.trx_date DESC, t.id DESC",
+};
+
 const ownerOnly = (user) => (user.role === "staff" ? user.id : null);
 
 async function resolveItems(db, type, items) {
@@ -30,7 +37,7 @@ const addItems = (client, transactionId, items) =>
     [transactionId, items.map((i) => i.product_id), items.map((i) => i.product_name), items.map((i) => i.product_sku), items.map((i) => i.quantity)]
   );
 
-export async function listTransactions({ type, status, date_from, date_to, party, page = 1, limit = 10 } = {}) {
+export async function listTransactions({ type, status, date_from, date_to, party, sort, page = 1, limit = 10 } = {}) {
   const params = [
     ["IN", "OUT"].includes(type) ? type : null,
     ["Pending", "Approved", "Rejected", "Shipped"].includes(status) ? status : null,
@@ -46,7 +53,7 @@ export async function listTransactions({ type, status, date_from, date_to, party
     `SELECT ${COLUMNS},
        (SELECT COUNT(*)::int FROM transaction_items i WHERE i.transaction_id = t.id) AS item_count,
        (SELECT COALESCE(SUM(quantity), 0)::int FROM transaction_items i WHERE i.transaction_id = t.id) AS total_quantity
-     ${FROM} ${where} ORDER BY t.trx_date DESC, t.id DESC LIMIT $6 OFFSET $7`,
+     ${FROM} ${where} ORDER BY ${SORTS[sort] ?? SORTS.newest} LIMIT $6 OFFSET $7`,
     [...params, limit, (page - 1) * limit]
   );
   return { data: rows, total: total.rows[0].total };
