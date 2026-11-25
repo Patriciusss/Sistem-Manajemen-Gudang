@@ -1,8 +1,10 @@
-export default function Button({ className = "", ...props }) {
+import { btn } from "@/components/ui/styles";
+
+export default function Button({ loading = false, disabled, className = "", children, ...props }) {
   return (
-    <button
-      className={`h-11 w-full cursor-pointer rounded-lg bg-accent px-4 font-semibold text-on-accent transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none ${className}`}
-      {...props}
-    />
+    <button disabled={disabled || loading} aria-busy={loading} className={`${btn.primary} w-full ${className}`} {...props}>
+      {loading && <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none" />}
+      {children}
+    </button>
   );
 }

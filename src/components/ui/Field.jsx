@@ -1,22 +1,25 @@
 "use client";
 
 import { useId, useState } from "react";
+import { inputClass } from "@/components/ui/styles";
 
-export default function Field({ label, type = "text", ...props }) {
+export default function Field({ label, type = "text", error, ...props }) {
   const id = useId();
   const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold">
         {label}
       </label>
       <div className="relative">
         <input
           id={id}
           type={isPassword && visible ? "text" : type}
-          className={`h-11 w-full rounded-lg border border-input bg-card px-3 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 motion-reduce:transition-none ${isPassword ? "pr-11" : ""}`}
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={`${inputClass} ${error ? "border-red-700" : ""} ${isPassword ? "pr-11" : ""}`}
           {...props}
         />
         {isPassword && (
@@ -24,7 +27,7 @@ export default function Field({ label, type = "text", ...props }) {
             type="button"
             onClick={() => setVisible(!visible)}
             aria-label={visible ? "Hide password" : "Show password"}
-            className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center rounded-xl text-ink-soft hover:text-ink"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {visible ? (
@@ -44,6 +47,11 @@ export default function Field({ label, type = "text", ...props }) {
           </button>
         )}
       </div>
+      {error && (
+        <p id={`${id}-error`} className="mt-1.5 text-sm font-medium text-red-800">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
